@@ -1,0 +1,28 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    compile 'com.fasterxml.jackson.core:jackson-databind:2.10.2'
+    compile 'org.elasticsearch.client:elasticsearch-rest-high-level-client:7.5.2'
+    compile 'org.elasticsearch.client:elasticsearch-rest-client-sniffer:7.5.2'
+    // log commons over to slf4j over to the console
+    // check simplelogger.properties file for logging setup
+    compile 'org.slf4j:jcl-over-slf4j:1.7.30'
+    compile 'org.slf4j:slf4j-simple:1.7.30'
+
+    testCompile 'org.assertj:assertj-core:3.15.0'
+    testCompile "org.testcontainers:elasticsearch:1.12.5"
+    testImplementation "org.testcontainers:junit-jupiter:1.12.5"
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.6.0'
+}
+
+test {
+    useJUnitPlatform()
+}
