@@ -37,6 +37,11 @@ public class ProductServiceImpl implements ProductService, Closeable {
     }
 
     @Override
+    public void close() throws IOException {
+        client.close();
+    }
+
+    @Override
     public Product findById(String id) throws IOException {
         final GetResponse response = client.get(new GetRequest(index, id), RequestOptions.DEFAULT);
         final Product product = mapper.readValue(response.getSourceAsBytes(), Product.class);
@@ -109,10 +114,5 @@ public class ProductServiceImpl implements ProductService, Closeable {
         }
         request.source(bytes, XContentType.JSON);
         return request;
-    }
-
-    @Override
-    public void close() throws IOException {
-        client.close();
     }
 }
