@@ -9,12 +9,12 @@ public class ProductTests {
 
     @Test
     public void testObjectMapperToProduct() throws Exception {
-        String json = "{\n" +
-                "\"name\" : \"Best name ever\",\n" +
-                "\"description\" : \"This is a wonderful description\",\n" +
-                "\"price\" : 123.32,\n" +
-                "\"stock_available\" : 123\n" +
-                "}\n";
+        String json = "{" +
+                "\"name\":\"Best name ever\"," +
+                "\"description\":\"This is a wonderful description\"," +
+                "\"stock_available\":123," +
+                "\"price\":123.32" +
+                "}";
 
         ObjectMapper mapper = new ObjectMapper();
         Product product = mapper.readValue(json, Product.class);
@@ -23,5 +23,9 @@ public class ProductTests {
         assertThat(product.getDescription()).isEqualTo("This is a wonderful description");
         assertThat(product.getPrice()).isEqualTo(123.32);
         assertThat(product.getStockAvailable()).isEqualTo(123);
+
+        // now vice versa. serialize out again
+        final String serializedJson = mapper.writeValueAsString(product);
+        assertThat(serializedJson).isEqualTo(json);
     }
 }
