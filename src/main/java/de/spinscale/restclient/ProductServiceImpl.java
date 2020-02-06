@@ -1,7 +1,6 @@
 package de.spinscale.restclient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.http.HttpHost;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.get.GetRequest;
@@ -10,35 +9,28 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 // use async in a real application
-public class ProductServiceImpl implements ProductService, Closeable {
+public class ProductServiceImpl implements ProductService {
 
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private final String index;
     private final RestHighLevelClient client;
 
-    public ProductServiceImpl(String index, HttpHost ... hosts) {
+    public ProductServiceImpl(String index, RestHighLevelClient client) {
         this.index = index;
-        this.client = new RestHighLevelClient(RestClient.builder(hosts));
-    }
-
-    @Override
-    public void close() throws IOException {
-        client.close();
+        this.client = client;
     }
 
     @Override

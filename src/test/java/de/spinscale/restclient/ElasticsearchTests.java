@@ -2,6 +2,10 @@ package de.spinscale.restclient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.lucene.search.TotalHits;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.action.ActionListener;
@@ -54,12 +58,11 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-// more logging everything: -Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG
-// more logging ES client only:
 public class ElasticsearchTests {
 
     private static final ElasticsearchContainer container =
             new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:7.5.2").withExposedPorts(9200);
+
     private static final NodeSelector INGEST_NODE_SELECTOR = nodes -> {
         final Iterator<Node> iterator = nodes.iterator();
         while (iterator.hasNext()) {
@@ -76,20 +79,36 @@ public class ElasticsearchTests {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     @BeforeAll
-    public static void startElasticsearch() {
+    public static void startElasticsearchCreateLocalClient() {
         container.start();
 
         HttpHost host = new HttpHost("localhost", container.getMappedPort(9200));
         final RestClientBuilder builder = RestClient.builder(host);
         builder.setNodeSelector(INGEST_NODE_SELECTOR);
         client = new RestHighLevelClient(builder);
-        productService = new ProductServiceImpl(INDEX, host);
+        productService = new ProductServiceImpl(INDEX, client);
     }
+
+//    @BeforeAll
+//    public static void startElasticsearchCreateCloudClient() {
+//        String cloudId = "";
+//        String user = "elastic";
+//        String password = "";
+//
+//        // basic auth, preemptive authentication
+//        final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+//        credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(user, password));
+//
+//        final RestClientBuilder builder = RestClient.builder(cloudId);
+//        builder.setHttpClientConfigCallback(b -> b.setDefaultCredentialsProvider(credentialsProvider));
+//
+//        client = new RestHighLevelClient(builder);
+//        productService = new ProductServiceImpl(INDEX, client);
+//    }
 
     @AfterAll
     public static void closeResources() throws Exception {
         client.close();
-        productService.close();
     }
 
     @AfterEach
@@ -343,7 +362,7 @@ public class ElasticsearchTests {
         final SearchResponse response = client.search(searchRequest, RequestOptions.DEFAULT);
         assertThat(response.getHits().getHits()).isEmpty();
         Histogram histogram = response.getAggregations().get("price_histo");
-        // prices go from 0-1200, so we should have 12 buckets on an interval with 10
+        // prices go from 0-120, so we should have 12 buckets on an interval with 10
         assertThat(histogram.getBuckets()).hasSize(12);
         // also all the average stock should go up
         List<Double> averages = histogram.getBuckets().stream().map((Histogram.Bucket b) -> {
