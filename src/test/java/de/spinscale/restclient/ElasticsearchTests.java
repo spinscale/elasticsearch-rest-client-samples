@@ -61,7 +61,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class ElasticsearchTests {
 
     private static final ElasticsearchContainer container =
-            new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:7.5.2").withExposedPorts(9200);
+            new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:7.6.2").withExposedPorts(9200);
 
     private static final NodeSelector INGEST_NODE_SELECTOR = nodes -> {
         final Iterator<Node> iterator = nodes.iterator();
