@@ -7,10 +7,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import java.io.IOException;
 
-public class ProductDeseralizer extends JsonDeserializer {
+public class ProductDeserializer extends JsonDeserializer<Product> {
 
     @Override
-    public Object deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+    public Product deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
         JsonNode productNode = jp.getCodec().readTree(jp);
 
         Product product = new Product();

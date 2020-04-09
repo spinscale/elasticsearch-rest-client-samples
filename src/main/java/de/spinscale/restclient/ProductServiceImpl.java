@@ -1,6 +1,7 @@
 package de.spinscale.restclient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.get.GetRequest;
@@ -11,6 +12,7 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -23,14 +25,14 @@ import java.util.List;
 // use async in a real application
 public class ProductServiceImpl implements ProductService {
 
-    private static final ObjectMapper mapper = new ObjectMapper();
-
     private final String index;
     private final RestHighLevelClient client;
+    private final ObjectMapper mapper;
 
     public ProductServiceImpl(String index, RestHighLevelClient client) {
         this.index = index;
         this.client = client;
+        this.mapper = createMapper();
     }
 
     @Override
@@ -68,18 +70,18 @@ public class ProductServiceImpl implements ProductService {
             products.add(product);
         }
 
-        return new Page(products, input, searchRequest.source().from(), searchRequest.source().size());
+        final SearchSourceBuilder source = searchRequest.source();
+        return new Page(products, input, source.from(), source.size());
     }
 
     private SearchRequest createSearchRequest(String input, int from, int size) {
-        final SearchRequest searchRequest = new SearchRequest();
         final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        searchSourceBuilder.from(from);
-        searchSourceBuilder.size(size);
-        searchSourceBuilder.query(QueryBuilders.multiMatchQuery(input, "name", "description"));
-        searchRequest.source(searchSourceBuilder);
-
-        return searchRequest;
+        final QueryBuilder query = QueryBuilders.multiMatchQuery(input, "name", "description");
+        searchSourceBuilder
+                .from(from)
+                .size(size)
+                .query(query);
+        return new SearchRequest(index).source(searchSourceBuilder);
     }
 
     @Override
@@ -106,5 +108,14 @@ public class ProductServiceImpl implements ProductService {
         }
         request.source(bytes, XContentType.JSON);
         return request;
+    }
+
+    static final ObjectMapper createMapper() {
+        final ObjectMapper mapper = new ObjectMapper();
+        SimpleModule module = new SimpleModule();
+        module.addSerializer(Product.class, new ProductSerializer());
+        module.addDeserializer(Product.class, new ProductDeserializer());
+        mapper.registerModule(module);
+        return mapper;
     }
 }

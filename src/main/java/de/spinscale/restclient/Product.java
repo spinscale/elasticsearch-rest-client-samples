@@ -1,10 +1,5 @@
 package de.spinscale.restclient;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-
-@JsonDeserialize(using = ProductDeseralizer.class)
-@JsonSerialize(using = ProductSerializer.class)
 public class Product {
 
     private String id;
