@@ -2,10 +2,6 @@ package de.spinscale.restclient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.lucene.search.TotalHits;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.action.ActionListener;
@@ -39,8 +35,8 @@ import org.elasticsearch.search.aggregations.metrics.Avg;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 
@@ -111,7 +107,7 @@ public class ElasticsearchTests {
         client.close();
     }
 
-    @AfterEach
+    @BeforeEach
     public void deleteProductIndex() throws Exception {
         try {
             client.indices().delete(new DeleteIndexRequest(INDEX), RequestOptions.DEFAULT);
@@ -154,6 +150,7 @@ public class ElasticsearchTests {
 
         productService.save(product);
 
+        product = productService.findById("0");
         assertThat(product.getId()).isEqualTo("0");
     }
 
@@ -209,8 +206,9 @@ public class ElasticsearchTests {
 
         // first search after
         SearchRequest searchAfterRequest = new SearchRequest(INDEX);
-        searchAfterRequest.source().query(QueryBuilders.matchQuery("name", "Name"));
-        searchAfterRequest.source().sort(SortBuilders.fieldSort("price").order(SortOrder.DESC));
+        searchAfterRequest.source()
+                .query(QueryBuilders.matchQuery("name", "Name"))
+                .sort(SortBuilders.fieldSort("price").order(SortOrder.DESC));
         SearchHit lastHit = response.getHits().getHits()[response.getHits().getHits().length-1];
         searchAfterRequest.source().searchAfter(lastHit.getSortValues());
         final SearchResponse searchAfterResponse = client.search(searchAfterRequest, RequestOptions.DEFAULT);

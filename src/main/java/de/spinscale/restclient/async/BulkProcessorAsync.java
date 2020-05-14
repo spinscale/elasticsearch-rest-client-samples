@@ -85,16 +85,10 @@ public class BulkProcessorAsync implements AutoCloseable {
 
         @Override
         public void beforeBulk(long executionId, BulkRequest request) {
-            System.out.println("BEFORE BULK");
         }
 
         @Override
         public void afterBulk(long executionId, BulkRequest request, BulkResponse response) {
-            System.out.println("AFTER BULK");
-            System.out.println(request.requests());
-            System.out.println(response.getItems()[0].status());
-            System.out.println(futures.keySet());
-
             for (int i = 0; i < request.numberOfActions(); i++) {
                 final PlainActionFuture<IndexResponse> future = futures.remove(request.requests().get(i).id());
                 final IndexResponse indexResponse = response.getItems()[i].getResponse();
@@ -104,8 +98,6 @@ public class BulkProcessorAsync implements AutoCloseable {
 
         @Override
         public void afterBulk(long executionId, BulkRequest request, Throwable failure) {
-            failure.printStackTrace();
-            System.out.println("AFTER BULK2");
             for (int i = 0; i < request.numberOfActions(); i++) {
                 final PlainActionFuture<IndexResponse> future = futures.remove(request.requests().get(i).id());
                 future.onFailure(new Exception(failure));
