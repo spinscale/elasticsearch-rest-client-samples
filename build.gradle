@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id "com.github.ben-manes.versions" version '0.33.0'
 }
 
 repositories {
@@ -8,21 +9,21 @@ repositories {
 
 dependencies {
     compile 'com.fasterxml.jackson.core:jackson-databind:2.10.4'
-    compile 'org.elasticsearch.client:elasticsearch-rest-high-level-client:7.8.0'
+    compile 'org.elasticsearch.client:elasticsearch-rest-high-level-client:7.9.2'
     // not needed currently
-    //compile 'org.elasticsearch.client:elasticsearch-rest-client-sniffer:7.8.0'
+    //compile 'org.elasticsearch.client:elasticsearch-rest-client-sniffer:7.9.2'
 
     // log commons over to slf4j over to the console
     // check simplelogger.properties file for logging setup
     compile 'org.slf4j:jcl-over-slf4j:1.7.30'
     compile 'org.slf4j:slf4j-simple:1.7.30'
 
-    testCompile 'org.assertj:assertj-core:3.16.1'
+    testCompile 'org.assertj:assertj-core:3.17.2'
     testCompile "org.testcontainers:elasticsearch:1.14.3"
     testImplementation "org.testcontainers:junit-jupiter:1.14.3"
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.2'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.6.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
 }
 
 test {
