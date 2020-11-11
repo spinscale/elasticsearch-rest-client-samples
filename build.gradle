@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id "com.github.ben-manes.versions" version '0.33.0'
+    id "com.github.ben-manes.versions" version '0.36.0'
 }
 
 repositories {
@@ -18,9 +18,9 @@ dependencies {
     compile 'org.slf4j:jcl-over-slf4j:1.7.30'
     compile 'org.slf4j:slf4j-simple:1.7.30'
 
-    testCompile 'org.assertj:assertj-core:3.17.2'
-    testCompile "org.testcontainers:elasticsearch:1.14.3"
-    testImplementation "org.testcontainers:junit-jupiter:1.14.3"
+    testCompile 'org.assertj:assertj-core:3.18.1'
+    testCompile "org.testcontainers:elasticsearch:1.15.0"
+    testImplementation "org.testcontainers:junit-jupiter:1.15.0"
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
