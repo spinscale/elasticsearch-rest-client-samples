@@ -9,9 +9,9 @@ repositories {
 
 dependencies {
     compile 'com.fasterxml.jackson.core:jackson-databind:2.10.4'
-    compile 'org.elasticsearch.client:elasticsearch-rest-high-level-client:7.9.2'
+    compile 'org.elasticsearch.client:elasticsearch-rest-high-level-client:7.10.0'
     // not needed currently
-    //compile 'org.elasticsearch.client:elasticsearch-rest-client-sniffer:7.9.2'
+    //compile 'org.elasticsearch.client:elasticsearch-rest-client-sniffer:7.10.0'
 
     // log commons over to slf4j over to the console
     // check simplelogger.properties file for logging setup
