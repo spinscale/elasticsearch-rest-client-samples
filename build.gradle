@@ -8,22 +8,22 @@ repositories {
 }
 
 dependencies {
-    compile 'com.fasterxml.jackson.core:jackson-databind:2.10.4'
-    compile 'org.elasticsearch.client:elasticsearch-rest-high-level-client:7.11.1'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.10.4'
+    implementation 'org.elasticsearch.client:elasticsearch-rest-high-level-client:7.13.0'
     // not needed currently
-    //compile 'org.elasticsearch.client:elasticsearch-rest-client-sniffer:7.11.1'
+    //compile 'org.elasticsearch.client:elasticsearch-rest-client-sniffer:7.13.0'
 
     // log commons over to slf4j over to the console
     // check simplelogger.properties file for logging setup
-    compile 'org.slf4j:jcl-over-slf4j:1.7.30'
-    compile 'org.slf4j:slf4j-simple:1.7.30'
+    implementation 'org.slf4j:jcl-over-slf4j:1.7.30'
+    implementation 'org.slf4j:slf4j-simple:1.7.30'
 
-    testCompile 'org.assertj:assertj-core:3.19.0'
-    testCompile "org.testcontainers:elasticsearch:1.15.2"
-    testImplementation "org.testcontainers:junit-jupiter:1.15.2"
+    testImplementation 'org.assertj:assertj-core:3.19.0'
+    testImplementation 'org.testcontainers:elasticsearch:1.15.3'
+    testImplementation 'org.testcontainers:junit-jupiter:1.15.3'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.2'
 }
 
 test {

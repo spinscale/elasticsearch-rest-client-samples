@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BulkProcessorAsyncTests {
 
     private static final ElasticsearchContainer container =
-            new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:7.10.0").withExposedPorts(9200);
+            new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:7.13.0").withExposedPorts(9200);
 
     private static final String INDEX = "my_index";
     private static RestHighLevelClient client;
