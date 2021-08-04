@@ -13,8 +13,8 @@ import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.support.PlainActionFuture;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.core.TimeValue;
 
 import java.io.IOException;
 import java.util.Map;
@@ -40,7 +40,7 @@ public class BulkProcessorAsync implements AutoCloseable {
     public BulkProcessorAsync(RestHighLevelClient client, String index) {
         this.bulkProcessor = BulkProcessor.builder(
                 (request, bulkListener) -> client.bulkAsync(request, RequestOptions.DEFAULT, bulkListener),
-                new FutureNotificationListener())
+                new FutureNotificationListener(), "bulk-processor")
                 .setFlushInterval(TimeValue.timeValueSeconds(1))
                 .setBulkActions(100)
                 .build();

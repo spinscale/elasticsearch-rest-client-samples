@@ -24,8 +24,8 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.core.CountRequest;
 import org.elasticsearch.client.core.CountResponse;
 import org.elasticsearch.cluster.health.ClusterHealthStatus;
-import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.core.TimeValue;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
@@ -57,7 +57,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class ElasticsearchTests {
 
     private static final ElasticsearchContainer container =
-            new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:7.10.0").withExposedPorts(9200);
+            new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:7.14.0").withExposedPorts(9200);
 
     private static final NodeSelector INGEST_NODE_SELECTOR = nodes -> {
         final Iterator<Node> iterator = nodes.iterator();
