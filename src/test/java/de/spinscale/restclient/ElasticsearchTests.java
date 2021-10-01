@@ -117,6 +117,7 @@ public class ElasticsearchTests {
 
     @Test
     public void testClusterVersion() throws Exception {
+        final RequestOptions options = RequestOptions.DEFAULT.toBuilder().addHeader("X-Opaque-Id", "my-id").build();
         final ClusterHealthResponse response = client.cluster().health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
         // check for yellow or green cluster health
         assertThat(response.getStatus()).isNotEqualTo(ClusterHealthStatus.RED);
