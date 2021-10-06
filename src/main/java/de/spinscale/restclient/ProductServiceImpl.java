@@ -1,45 +1,33 @@
 package de.spinscale.restclient;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.get.GetRequest;
-import org.elasticsearch.action.get.GetResponse;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.common.xcontent.XContentType;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._core.BulkResponse;
+import co.elastic.clients.elasticsearch._core.GetResponse;
+import co.elastic.clients.elasticsearch._core.SearchRequest;
+import co.elastic.clients.elasticsearch._core.SearchResponse;
+import co.elastic.clients.elasticsearch._core.search.Hit;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 // use async in a real application
 public class ProductServiceImpl implements ProductService {
 
     private final String index;
-    private final RestHighLevelClient client;
-    private final ObjectMapper mapper;
+    private final ElasticsearchClient client;
 
-    public ProductServiceImpl(String index, RestHighLevelClient client) {
+    public ProductServiceImpl(String index, ElasticsearchClient client) {
         this.index = index;
         this.client = client;
-        this.mapper = createMapper();
     }
 
     @Override
     public Product findById(String id) throws IOException {
-        final GetResponse response = client.get(new GetRequest(index, id), RequestOptions.DEFAULT);
-        final Product product = mapper.readValue(response.getSourceAsBytes(), Product.class);
-        product.setId(response.getId());
+        final GetResponse<Product> getResponse = client.get(builder -> builder.index(index).id(id), Product.class);
+        Product product = getResponse.source();
+        product.setId(id);
         return product;
     }
 
@@ -56,32 +44,24 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private Page<Product> createPage(SearchRequest searchRequest, String input) throws IOException {
-        final SearchResponse response = client.search(searchRequest, RequestOptions.DEFAULT);
-        if (response.getHits().getTotalHits().value == 0) {
+        final SearchResponse<Product> response = client.search(searchRequest, Product.class);
+        if (response.hits().total().value() == 0) {
             return Page.EMPTY;
         }
-        if (response.getHits().getHits().length == 0) {
+        if (response.hits().hits().isEmpty()) {
             return Page.EMPTY;
-        }
-        List<Product> products = new ArrayList<>(response.getHits().getHits().length);
-        for (SearchHit hit : response.getHits().getHits()) {
-            final Product product = mapper.readValue(hit.getSourceAsString(), Product.class);
-            product.setId(hit.getId());
-            products.add(product);
         }
 
-        final SearchSourceBuilder source = searchRequest.source();
-        return new Page(products, input, source.from(), source.size());
+        response.hits().hits().forEach(hit -> hit.source().setId(hit.id()));
+        final List<Product> products = response.hits().hits().stream().map(Hit::source).collect(Collectors.toList());
+        return new Page(products, input, searchRequest.from(), searchRequest.size());
     }
 
     private SearchRequest createSearchRequest(String input, int from, int size) {
-        final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        final QueryBuilder query = QueryBuilders.multiMatchQuery(input, "name", "description");
-        searchSourceBuilder
+        return new SearchRequest(builder -> builder
                 .from(from)
                 .size(size)
-                .query(query);
-        return new SearchRequest(index).source(searchSourceBuilder);
+                .query(q -> q.multiMatch(mmb -> mmb.query(input).fields("name", "description"))));
     }
 
     @Override
@@ -90,32 +70,20 @@ public class ProductServiceImpl implements ProductService {
     }
 
     public void save(List<Product> products) throws IOException {
-        BulkRequest request = new BulkRequest();
-        for (Product product : products) {
-            request.add(indexRequest(product));
-        }
-        final BulkResponse response = client.bulk(request, RequestOptions.DEFAULT);
-        for (int i = 0; i < products.size(); i++) {
-            products.get(i).setId(response.getItems()[i].getId());
-        }
-    }
+        final BulkResponse response = client.bulk(builder -> {
+            for (Product product : products) {
+                builder.addOperation(b -> b.index(ib -> {
+                    if (product.getId() != null) {
+                        ib.id(product.getId());
+                    }
+                    return ib.index(index);
+                }));
+                builder.addDocument(product);
+            }
+            return builder;
+        });
 
-    private IndexRequest indexRequest(Product product) throws IOException {
-        final byte[] bytes = mapper.writeValueAsBytes(product);
-        final IndexRequest request = new IndexRequest(index);
-        if (product.getId() != null) {
-            request.id(product.getId());
-        }
-        request.source(bytes, XContentType.JSON);
-        return request;
-    }
-
-    static final ObjectMapper createMapper() {
-        final ObjectMapper mapper = new ObjectMapper();
-        SimpleModule module = new SimpleModule();
-        module.addSerializer(Product.class, new ProductSerializer());
-        module.addDeserializer(Product.class, new ProductDeserializer());
-        mapper.registerModule(module);
-        return mapper;
+        // TODO: Why does the response item not include the ID being returned?!
+        // TODO: add it back here
     }
 }
