@@ -1,19 +1,21 @@
 package de.spinscale.restclient;
 
-import co.elastic.clients.base.RestClientTransport;
-import co.elastic.clients.base.Transport;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._core.SearchResponse;
-import co.elastic.clients.elasticsearch._core.search.Hit;
-import co.elastic.clients.elasticsearch._core.search.TotalHitsRelation;
-import co.elastic.clients.elasticsearch._types.Health;
+import co.elastic.clients.elasticsearch._types.FieldSort;
+import co.elastic.clients.elasticsearch._types.HealthStatus;
+import co.elastic.clients.elasticsearch._types.SortOrder;
+import co.elastic.clients.elasticsearch._types.aggregations.HistogramAggregate;
 import co.elastic.clients.elasticsearch.cluster.HealthResponse;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.Hit;
+import co.elastic.clients.elasticsearch.core.search.TotalHitsRelation;
+import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import co.elastic.clients.transport.ElasticsearchTransport;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import org.apache.http.HttpHost;
@@ -69,7 +71,7 @@ public class ElasticsearchTests {
         mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
         restClient = builder.build();
-        Transport transport = new RestClientTransport(restClient, new JacksonJsonpMapper(mapper));
+        ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper(mapper));
         client = new ElasticsearchClient(transport);
         productService = new ProductServiceImpl(INDEX, client);
     }
@@ -108,7 +110,7 @@ public class ElasticsearchTests {
 
         final HealthResponse response = client.cluster().health(b -> b);
         // check for yellow or green cluster health
-        assertThat(response.status()).isNotEqualTo(Health.Red);
+        assertThat(response.status()).isNotEqualTo(HealthStatus.Red);
 
         // TODO: add back one async health request request
 //        CountDownLatch latch = new CountDownLatch(1);
@@ -182,12 +184,11 @@ public class ElasticsearchTests {
         productService.save(createProducts(21));
         client.indices().refresh(b -> b.index(INDEX));
 
-        // TODO sorting has left building?!
         final SearchResponse<Object> response = client.search(b -> b
                 .index(INDEX)
-                .query(qb -> qb.match(mqb -> mqb.field("name").query("Name")))
-                // SortBuilders.fieldSort("price").order(SortOrder.DESC)
-                .sort(), Object.class);
+                .query(qb -> qb.match(mqb -> mqb.field("name").query(builder -> builder.stringValue("Name"))))
+                .sort(sb -> sb.field(FieldSort.of(fs -> fs.field("price").order(SortOrder.Desc))))
+            , Object.class);
 
         final List<String> ids = response.hits().hits().stream().map(Hit::id).collect(Collectors.toList());
         final List<String> sort = response.hits().hits().get(response.hits().hits().size() - 1).sort();
@@ -196,8 +197,8 @@ public class ElasticsearchTests {
         // first search after
         final SearchResponse<Object> searchAfterResponse = client.search(b -> b
                         .index(INDEX)
-                        .query(qb -> qb.match(mqb -> mqb.field("name").query("Name")))
-                        .sort(sortOrder)
+                        .query(qb -> qb.match(mqb -> mqb.field("name").query(builder -> builder.stringValue("Name"))))
+                        .sort(sb -> sb.field(FieldSort.of(fs -> fs.field("price").order(SortOrder.Desc))))
                         .searchAfter(sort)
                 , Object.class);
 
@@ -248,20 +249,13 @@ public class ElasticsearchTests {
         productService.save(Arrays.asList(product1, product2, product3));
         client.indices().refresh(b -> b.index(INDEX));
 
-//        BoolQuery query = new BoolQuery(builder ->
-//                builder.addMust(qb -> qb.multiMatch(b -> b.query("Book")))
-//                        .addShould(qb -> qb.range(Json.createObjectBuilder(Map.of("price", Map.of("lt", 100))).build()))
-//                        .addFilter(qb -> qb.range(Json.createObjectBuilder(Map.of("stock_available", Map.of("gt", 0))).build()))
-//                        .addFilter(qb -> qb.range(Json.createObjectBuilder(Map.of("price", Map.of("gt", 0))).build()))
-//                );
-
         final SearchResponse<Object> response = client.search(b -> b.index(INDEX).query(q -> q.bool(builder ->
-                        builder.addMust(qb -> qb.multiMatch(mmq -> mmq.query("Book")))
-                                .addShould(qb -> qb.range(Json.createObjectBuilder(Map.of("price", Map.of("lt", 100))).build()))
-                                .addFilter(qb -> qb.range(Json.createObjectBuilder(Map.of("stock_available", Map.of("gt", 0))).build()))
-                                .addFilter(qb -> qb.range(Json.createObjectBuilder(Map.of("price", Map.of("gt", 0))).build()))
-                )
-        ), Object.class);
+                builder
+                        .must(m -> m.multiMatch(mmq -> mmq.query("Book")))
+                        .should(s -> s.range(r -> r.field("price").lt(JsonData.of(100))))
+                        .filter(f -> f.range(r -> r.field("stock_available").gt(JsonData.of(0))))
+                        .filter(f -> f.range(r -> r.field("price").gt(JsonData.of(0))))
+        )), Object.class);
 
         // exact hit count
         assertThat(response.hits().total().value()).isEqualTo(2);
@@ -282,31 +276,25 @@ public class ElasticsearchTests {
         final SearchResponse<Object> response = client.search(builder -> builder.index(INDEX).size(0)
                         .aggregations("price_histo", aggBuilder ->
                                 aggBuilder.histogram(histo -> histo.interval(10.0).field("price"))
-                                        .aggs("stock_average", a -> a.avg(avg -> avg.field("stock_available")))),
+                                        .aggregations("stock_average", a -> a.avg(avg -> avg.field("stock_available")))),
                 Object.class);
 
-//        searchRequest.source().aggregation(
-//                AggregationBuilders.histogram("price_histo").interval(10).field("price")
-//                     .subAggregation(AggregationBuilders.avg("stock_average").field("stock_available")));
-
         assertThat(response.hits().hits()).isEmpty();
-
-        // TODO WAIT UNTIL AGGREGATION RESPONSES CAN BE PARSED?!
         assertThat(response.aggregations()).hasSize(1);
-//        Histogram histogram = response.getAggregations().get("price_histo");
-//        // prices go from 0-120, so we should have 12 buckets on an interval with 10
-//        assertThat(histogram.getBuckets()).hasSize(12);
-//        // also all the average stock should go up
-//        List<Double> averages = histogram.getBuckets().stream().map((Histogram.Bucket b) -> {
-//            final Avg average =  b.getAggregations().get("stock_average");
-//            return average.getValue();
-//        }).collect(Collectors.toList());
-//
-//        // check that averages are monotonically increasing due to the data design in createProducts();
-//        for (int i = 1; i < averages.size(); i++) {
-//            double previousValue = averages.get(i - 1);
-//            double currentValue = averages.get(i);
-//            assertThat(currentValue).isGreaterThan(previousValue);
-//        }
+        HistogramAggregate histogram = response.aggregations().get("price_histo").histogram();
+        // prices go from 0-120, so we should have 12 buckets on an interval with 10
+        assertThat(histogram.buckets().array()).hasSize(12);
+
+        // also all the average stock should go up
+        final List<Double> averages = histogram.buckets().array().stream()
+                .map(b -> b.aggregations().get("stock_average").avg().value())
+                .collect(Collectors.toList());
+
+        // check that averages are monotonically increasing due to the data design in createProducts();
+        for (int i = 1; i < averages.size(); i++) {
+            double previousValue = averages.get(i - 1);
+            double currentValue = averages.get(i);
+            assertThat(currentValue).isGreaterThan(previousValue);
+        }
     }
 }

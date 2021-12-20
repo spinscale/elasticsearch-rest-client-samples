@@ -1,11 +1,11 @@
 package de.spinscale.restclient;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._core.BulkResponse;
-import co.elastic.clients.elasticsearch._core.GetResponse;
-import co.elastic.clients.elasticsearch._core.SearchRequest;
-import co.elastic.clients.elasticsearch._core.SearchResponse;
-import co.elastic.clients.elasticsearch._core.search.Hit;
+import co.elastic.clients.elasticsearch.core.BulkResponse;
+import co.elastic.clients.elasticsearch.core.GetResponse;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.Hit;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -58,10 +58,11 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private SearchRequest createSearchRequest(String input, int from, int size) {
-        return new SearchRequest(builder -> builder
+        return new SearchRequest.Builder()
                 .from(from)
                 .size(size)
-                .query(q -> q.multiMatch(mmb -> mmb.query(input).fields("name", "description"))));
+                .query(qb -> qb.multiMatch(mmqb -> mmqb.query(input).fields("name", "description")))
+                .build();
     }
 
     @Override
@@ -72,17 +73,18 @@ public class ProductServiceImpl implements ProductService {
     public void save(List<Product> products) throws IOException {
         final BulkResponse response = client.bulk(builder -> {
             for (Product product : products) {
-                builder.addOperation(b -> b.index(ib -> {
-                    if (product.getId() != null) {
-                        ib.id(product.getId());
-                    }
-                    return ib.index(index);
-                }));
-                builder.addDocument(product);
+                builder.index(index)
+                       .operations(ob -> {
+                           if (product.getId() != null) {
+                               ob.index(ib -> ib.document(product).id(product.getId()));
+                           } else {
+                               ob.index(ib -> ib.document(product));
+                           }
+                           return ob;
+                       });
             }
             return builder;
         });
-
         // TODO: Why does the response item not include the ID being returned?!
         // TODO: add it back here
     }
