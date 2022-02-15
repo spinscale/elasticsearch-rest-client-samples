@@ -23,7 +23,6 @@ import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
-import org.apache.http.conn.ssl.AllowAllHostnameVerifier;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.client.Node;
 import org.elasticsearch.client.NodeSelector;
@@ -37,6 +36,7 @@ import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 
 import javax.net.ssl.HttpsURLConnection;
+import java.io.InputStream;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -76,10 +76,10 @@ public class ElasticsearchTests {
     private static ElasticsearchAsyncClient asyncClient;
 
     @BeforeAll
-    public static void startElasticsearchCreateLocalClient() {
+    public static void startElasticsearchCreateLocalClient() throws Exception {
         HttpsURLConnection.setDefaultSSLSocketFactory(SslUtils.trustAllContext().getSocketFactory());
 
-        // remove from environment to have true TLS
+        // remove from environment to have TLS enabled
         container.getEnvMap().remove("xpack.security.enabled");
 
         container.setWaitStrategy(new HttpWaitStrategy()
@@ -91,13 +91,16 @@ public class ElasticsearchTests {
                 .withStartupTimeout(Duration.ofMinutes(2)));
         container.start();
 
+        // extract the ca cert from the running instance
+        byte[] certAsBytes = container.copyFileFromContainer("/usr/share/elasticsearch/config/certs/http_ca.crt", InputStream::readAllBytes);
+
         HttpHost host = new HttpHost("localhost", container.getMappedPort(9200), "https");
         final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials("elastic", "s3cret"));
         final RestClientBuilder builder = RestClient.builder(host);
+
         builder.setHttpClientConfigCallback(clientBuilder -> {
-            clientBuilder.setSSLContext(SslUtils.trustAllContext());
-            clientBuilder.setSSLHostnameVerifier(new AllowAllHostnameVerifier());
+            clientBuilder.setSSLContext(SslUtils.createContextFromCaCert(certAsBytes));
             clientBuilder.setDefaultCredentialsProvider(credentialsProvider);
             return clientBuilder;
         });
