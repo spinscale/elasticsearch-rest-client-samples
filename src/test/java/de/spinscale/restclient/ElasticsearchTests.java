@@ -1,5 +1,6 @@
 package de.spinscale.restclient;
 
+import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.FieldSort;
 import co.elastic.clients.elasticsearch._types.HealthStatus;
@@ -19,6 +20,10 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.client.Node;
 import org.elasticsearch.client.NodeSelector;
 import org.elasticsearch.client.RestClient;
@@ -34,6 +39,8 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,7 +48,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class ElasticsearchTests {
 
     private static final ElasticsearchContainer container =
-            new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:7.15.0").withExposedPorts(9200);
+            new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:8.0.0")
+                    .withExposedPorts(9200)
+                    .withPassword("s3cret");
 
     private static final NodeSelector INGEST_NODE_SELECTOR = nodes -> {
         final Iterator<Node> iterator = nodes.iterator();
@@ -57,13 +66,21 @@ public class ElasticsearchTests {
     private static ElasticsearchClient client;
     private static RestClient restClient;
     private static ProductServiceImpl productService;
+    private static ElasticsearchAsyncClient asyncClient;
 
     @BeforeAll
     public static void startElasticsearchCreateLocalClient() {
+//        container.getEnvMap().remove("");
+
         container.start();
 
-        HttpHost host = new HttpHost("localhost", container.getMappedPort(9200));
+        HttpHost host = new HttpHost("localhost", container.getMappedPort(9200), "http");
+        final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials("elastic", "s3cret"));
         final RestClientBuilder builder = RestClient.builder(host);
+        builder.setHttpClientConfigCallback(httpClientBuilder ->
+                httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider)
+        );
         builder.setNodeSelector(INGEST_NODE_SELECTOR);
 
         final ObjectMapper mapper = new ObjectMapper();
@@ -73,6 +90,7 @@ public class ElasticsearchTests {
         restClient = builder.build();
         ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper(mapper));
         client = new ElasticsearchClient(transport);
+        asyncClient = new ElasticsearchAsyncClient(transport);
         productService = new ProductServiceImpl(INDEX, client);
     }
 
@@ -108,26 +126,30 @@ public class ElasticsearchTests {
         // this just exists to index some data, so the index deletion does not fail
         productService.save(createProducts(1));
 
-        final HealthResponse response = client.cluster().health(b -> b);
+        final HealthResponse response = client.cluster().health();
         // check for yellow or green cluster health
         assertThat(response.status()).isNotEqualTo(HealthStatus.Red);
 
         // TODO: add back one async health request request
-//        CountDownLatch latch = new CountDownLatch(1);
-//        latch.await(10, TimeUnit.SECONDS);
+        CountDownLatch latch = new CountDownLatch(1);
+        asyncClient.cluster().health()
+                .whenComplete((resp, throwable) -> {
+                    assertThat(resp.status()).isNotEqualTo(HealthStatus.Red);
+                    latch.countDown();
+                });
+        latch.await(10, TimeUnit.SECONDS);
     }
 
-    // TODO requires fixing of bulk response
-//    @Test
-//    public void indexProductWithoutId() throws Exception {
-//        Product product = createProducts(1).get(0);
-//        product.setId(null);
-//        assertThat(product.getId()).isNull();
-//
-//        productService.save(product);
-//
-//        assertThat(product.getId()).isNotNull();
-//    }
+    @Test
+    public void indexProductWithoutId() throws Exception {
+        Product product = createProducts(1).get(0);
+        product.setId(null);
+        assertThat(product.getId()).isNull();
+
+        productService.save(product);
+
+        assertThat(product.getId()).isNotNull();
+    }
 
     @Test
     public void indexProductWithId() throws Exception {

@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id "com.github.ben-manes.versions" version '0.39.0'
+    id "com.github.ben-manes.versions" version '0.42.0'
 }
 
 repositories {
@@ -10,19 +10,19 @@ repositories {
 dependencies {
     implementation 'jakarta.json:jakarta.json-api:2.0.1'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.1'
-    implementation 'co.elastic.clients:elasticsearch-java:7.16.2'
-    implementation 'org.elasticsearch.client:elasticsearch-rest-client:7.16.2'
+    implementation 'co.elastic.clients:elasticsearch-java:8.0.0'
+    implementation 'org.elasticsearch.client:elasticsearch-rest-client:8.0.0'
     // not needed currently
-    //implementation 'org.elasticsearch.client:elasticsearch-rest-client-sniffer:7.16.2'
+    //implementation 'org.elasticsearch.client:elasticsearch-rest-client-sniffer:8.0.0'
 
     // log commons over to slf4j over to the console
     // check simplelogger.properties file for logging setup
-    implementation 'org.slf4j:jcl-over-slf4j:1.7.32'
-    implementation 'org.slf4j:slf4j-simple:1.7.32'
+    implementation 'org.slf4j:jcl-over-slf4j:1.7.34'
+    implementation 'org.slf4j:slf4j-simple:1.7.34'
 
-    testImplementation 'org.assertj:assertj-core:3.21.0'
-    testImplementation 'org.testcontainers:elasticsearch:1.16.2'
-    testImplementation 'org.testcontainers:junit-jupiter:1.16.2'
+    testImplementation 'org.assertj:assertj-core:3.22.0'
+    testImplementation 'org.testcontainers:elasticsearch:1.16.3'
+    testImplementation 'org.testcontainers:junit-jupiter:1.16.3'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'

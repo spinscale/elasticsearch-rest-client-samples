@@ -85,7 +85,10 @@ public class ProductServiceImpl implements ProductService {
             }
             return builder;
         });
-        // TODO: Why does the response item not include the ID being returned?!
-        // TODO: add it back here
+
+        final int size = products.size();
+        for (int i = 0; i < size; i++) {
+            products.get(i).setId(response.items().get(i).id());
+        }
     }
 }
