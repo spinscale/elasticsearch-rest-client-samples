@@ -23,6 +23,7 @@ import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
+import org.apache.http.conn.ssl.AllowAllHostnameVerifier;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.client.Node;
 import org.elasticsearch.client.NodeSelector;
@@ -32,8 +33,11 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 
+import javax.net.ssl.HttpsURLConnection;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -43,6 +47,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static java.net.HttpURLConnection.HTTP_OK;
+import static java.net.HttpURLConnection.HTTP_UNAUTHORIZED;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ElasticsearchTests {
@@ -51,6 +57,7 @@ public class ElasticsearchTests {
             new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:8.0.0")
                     .withExposedPorts(9200)
                     .withPassword("s3cret");
+    ;
 
     private static final NodeSelector INGEST_NODE_SELECTOR = nodes -> {
         final Iterator<Node> iterator = nodes.iterator();
@@ -70,17 +77,30 @@ public class ElasticsearchTests {
 
     @BeforeAll
     public static void startElasticsearchCreateLocalClient() {
-//        container.getEnvMap().remove("");
+        HttpsURLConnection.setDefaultSSLSocketFactory(SslUtils.trustAllContext().getSocketFactory());
 
+        // remove from environment to have true TLS
+        container.getEnvMap().remove("xpack.security.enabled");
+
+        container.setWaitStrategy(new HttpWaitStrategy()
+                .forPort(9200)
+                .usingTls()
+                .forStatusCode(HTTP_OK)
+                .forStatusCode(HTTP_UNAUTHORIZED)
+                .withBasicCredentials("elastic", "secr3t")
+                .withStartupTimeout(Duration.ofMinutes(2)));
         container.start();
 
-        HttpHost host = new HttpHost("localhost", container.getMappedPort(9200), "http");
+        HttpHost host = new HttpHost("localhost", container.getMappedPort(9200), "https");
         final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials("elastic", "s3cret"));
         final RestClientBuilder builder = RestClient.builder(host);
-        builder.setHttpClientConfigCallback(httpClientBuilder ->
-                httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider)
-        );
+        builder.setHttpClientConfigCallback(clientBuilder -> {
+            clientBuilder.setSSLContext(SslUtils.trustAllContext());
+            clientBuilder.setSSLHostnameVerifier(new AllowAllHostnameVerifier());
+            clientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+            return clientBuilder;
+        });
         builder.setNodeSelector(INGEST_NODE_SELECTOR);
 
         final ObjectMapper mapper = new ObjectMapper();
