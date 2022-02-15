@@ -77,11 +77,14 @@ public class ElasticsearchTests {
 
     @BeforeAll
     public static void startElasticsearchCreateLocalClient() throws Exception {
+        // this is required because the wait strategy uses HttpsURLConnection and does not yet
+        // know about the certificate to be copied out of the container, see below
         HttpsURLConnection.setDefaultSSLSocketFactory(SslUtils.trustAllContext().getSocketFactory());
 
         // remove from environment to have TLS enabled
         container.getEnvMap().remove("xpack.security.enabled");
 
+        // custom wait strategy for tls and basic auth
         container.setWaitStrategy(new HttpWaitStrategy()
                 .forPort(9200)
                 .usingTls()
