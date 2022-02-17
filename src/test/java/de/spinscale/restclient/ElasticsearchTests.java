@@ -32,12 +32,10 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
+import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 
-import javax.net.ssl.HttpsURLConnection;
 import java.io.InputStream;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -47,17 +45,15 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static java.net.HttpURLConnection.HTTP_OK;
-import static java.net.HttpURLConnection.HTTP_UNAUTHORIZED;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ElasticsearchTests {
 
+    private static final String IMAGE_NAME = "docker.elastic.co/elasticsearch/elasticsearch:8.0.0";
     private static final ElasticsearchContainer container =
-            new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:8.0.0")
+            new ElasticsearchContainer(IMAGE_NAME)
                     .withExposedPorts(9200)
                     .withPassword("s3cret");
-    ;
 
     private static final NodeSelector INGEST_NODE_SELECTOR = nodes -> {
         final Iterator<Node> iterator = nodes.iterator();
@@ -77,21 +73,11 @@ public class ElasticsearchTests {
 
     @BeforeAll
     public static void startElasticsearchCreateLocalClient() throws Exception {
-        // this is required because the wait strategy uses HttpsURLConnection and does not yet
-        // know about the certificate to be copied out of the container, see below
-        HttpsURLConnection.setDefaultSSLSocketFactory(SslUtils.trustAllContext().getSocketFactory());
-
         // remove from environment to have TLS enabled
         container.getEnvMap().remove("xpack.security.enabled");
 
-        // custom wait strategy for tls and basic auth
-        container.setWaitStrategy(new HttpWaitStrategy()
-                .forPort(9200)
-                .usingTls()
-                .forStatusCode(HTTP_OK)
-                .forStatusCode(HTTP_UNAUTHORIZED)
-                .withBasicCredentials("elastic", "secr3t")
-                .withStartupTimeout(Duration.ofMinutes(2)));
+        // custom wait strategy not requiring any TLS tuning...
+        container.setWaitStrategy(new LogMessageWaitStrategy().withRegEx(".*\"message\":\"started\".*"));
         container.start();
 
         // extract the ca cert from the running instance
