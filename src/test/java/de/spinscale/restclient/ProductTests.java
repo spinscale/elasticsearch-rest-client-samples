@@ -17,6 +17,7 @@ public class ProductTests {
             "\"price\":123.32," +
             "\"stock_available\":123" +
             "}";
+
     @Test
     public void testObjectMapperToProduct() throws Exception {
         final ObjectMapper mapper = new ObjectMapper();

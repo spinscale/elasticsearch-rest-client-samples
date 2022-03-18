@@ -49,7 +49,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class ElasticsearchTests {
 
-    private static final String IMAGE_NAME = "docker.elastic.co/elasticsearch/elasticsearch:8.0.0";
+    private static final String IMAGE_NAME = "docker.elastic.co/elasticsearch/elasticsearch:8.1.0";
     private static final ElasticsearchContainer container =
             new ElasticsearchContainer(IMAGE_NAME)
                     .withExposedPorts(9200)
@@ -218,23 +218,23 @@ public class ElasticsearchTests {
         productService.save(createProducts(21));
         client.indices().refresh(b -> b.index(INDEX));
 
-        final SearchResponse<Object> response = client.search(b -> b
+        final SearchResponse<Void> response = client.search(b -> b
                 .index(INDEX)
                 .query(qb -> qb.match(mqb -> mqb.field("name").query(builder -> builder.stringValue("Name"))))
                 .sort(sb -> sb.field(FieldSort.of(fs -> fs.field("price").order(SortOrder.Desc))))
-            , Object.class);
+            , Void.class);
 
         final List<String> ids = response.hits().hits().stream().map(Hit::id).collect(Collectors.toList());
         final List<String> sort = response.hits().hits().get(response.hits().hits().size() - 1).sort();
         final JsonObject sortOrder = Json.createObjectBuilder(Map.of("price", Map.of("order", "desc"))).build();
 
         // first search after
-        final SearchResponse<Object> searchAfterResponse = client.search(b -> b
+        final SearchResponse<Void> searchAfterResponse = client.search(b -> b
                         .index(INDEX)
                         .query(qb -> qb.match(mqb -> mqb.field("name").query(builder -> builder.stringValue("Name"))))
                         .sort(sb -> sb.field(FieldSort.of(fs -> fs.field("price").order(SortOrder.Desc))))
                         .searchAfter(sort)
-                , Object.class);
+                , Void.class);
 
         final List<String> searchAfterIds = searchAfterResponse.hits().hits().stream().map(Hit::id).collect(Collectors.toList());
 
@@ -283,20 +283,20 @@ public class ElasticsearchTests {
         productService.save(Arrays.asList(product1, product2, product3));
         client.indices().refresh(b -> b.index(INDEX));
 
-        final SearchResponse<Object> response = client.search(b -> b.index(INDEX).query(q -> q.bool(builder ->
+        final SearchResponse<Void> response = client.search(b -> b.index(INDEX).query(q -> q.bool(builder ->
                 builder
                         .must(m -> m.multiMatch(mmq -> mmq.query("Book")))
                         .should(s -> s.range(r -> r.field("price").lt(JsonData.of(100))))
                         .filter(f -> f.range(r -> r.field("stock_available").gt(JsonData.of(0))))
                         .filter(f -> f.range(r -> r.field("price").gt(JsonData.of(0))))
-        )), Object.class);
+        )), Void.class);
 
         // exact hit count
         assertThat(response.hits().total().value()).isEqualTo(2);
         assertThat(response.hits().total().relation()).isEqualTo(TotalHitsRelation.Eq);
 
         // first hit should be 2010 edition due to its price and the above should clause
-        final List<Hit<Object>> hits = response.hits().hits();
+        final List<Hit<Void>> hits = response.hits().hits();
         assertThat(hits.get(0).id()).isEqualTo("book-world-records-2010");
         assertThat(hits.get(1).id()).isEqualTo("book-world-records-2020");
     }
@@ -307,11 +307,11 @@ public class ElasticsearchTests {
         productService.save(products);
         client.indices().refresh(b -> b.index(INDEX));
 
-        final SearchResponse<Object> response = client.search(builder -> builder.index(INDEX).size(0)
+        final SearchResponse<Void> response = client.search(builder -> builder.index(INDEX).size(0)
                         .aggregations("price_histo", aggBuilder ->
                                 aggBuilder.histogram(histo -> histo.interval(10.0).field("price"))
                                         .aggregations("stock_average", a -> a.avg(avg -> avg.field("stock_available")))),
-                Object.class);
+                Void.class);
 
         assertThat(response.hits().hits()).isEmpty();
         assertThat(response.aggregations()).hasSize(1);
@@ -322,7 +322,7 @@ public class ElasticsearchTests {
         // also all the average stock should go up
         final List<Double> averages = histogram.buckets().array().stream()
                 .map(b -> b.aggregations().get("stock_average").avg().value())
-                .collect(Collectors.toList());
+                .toList();
 
         // check that averages are monotonically increasing due to the data design in createProducts();
         for (int i = 1; i < averages.size(); i++) {
