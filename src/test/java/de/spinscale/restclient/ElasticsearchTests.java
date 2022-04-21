@@ -49,7 +49,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class ElasticsearchTests {
 
-    private static final String IMAGE_NAME = "docker.elastic.co/elasticsearch/elasticsearch:8.1.0";
+    private static final String IMAGE_NAME = "docker.elastic.co/elasticsearch/elasticsearch:8.1.3";
     private static final ElasticsearchContainer container =
             new ElasticsearchContainer(IMAGE_NAME)
                     .withExposedPorts(9200)
@@ -226,7 +226,6 @@ public class ElasticsearchTests {
 
         final List<String> ids = response.hits().hits().stream().map(Hit::id).collect(Collectors.toList());
         final List<String> sort = response.hits().hits().get(response.hits().hits().size() - 1).sort();
-        final JsonObject sortOrder = Json.createObjectBuilder(Map.of("price", Map.of("order", "desc"))).build();
 
         // first search after
         final SearchResponse<Void> searchAfterResponse = client.search(b -> b
