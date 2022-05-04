@@ -49,7 +49,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class ElasticsearchTests {
 
-    private static final String IMAGE_NAME = "docker.elastic.co/elasticsearch/elasticsearch:8.1.3";
+    private static final String IMAGE_NAME = "docker.elastic.co/elasticsearch/elasticsearch:8.2.0";
     private static final ElasticsearchContainer container =
             new ElasticsearchContainer(IMAGE_NAME)
                     .withExposedPorts(9200)
