@@ -1,7 +1,7 @@
 # Elasticsearch REST client examples
 
-This repository shows a few examples of how to use the Elasticsearch High Level
-REST client. It is using Testcontainers for Elasticsearch, so you need to have
+This repository shows a few examples of how to use the Elasticsearch Java
+client. It is using Testcontainers for Elasticsearch, so you need to have
 Docker up and running.
 
 You can run the tests via `./gradlew clean check`, but I suppose just reading
