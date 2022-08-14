@@ -17,8 +17,6 @@ import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import jakarta.json.Json;
-import jakarta.json.JsonObject;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -32,15 +30,12 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -48,8 +43,7 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ElasticsearchTests {
-
-    private static final String IMAGE_NAME = "docker.elastic.co/elasticsearch/elasticsearch:8.2.0";
+    private static final String IMAGE_NAME = "docker.elastic.co/elasticsearch/elasticsearch:8.3.3";
     private static final ElasticsearchContainer container =
             new ElasticsearchContainer(IMAGE_NAME)
                     .withExposedPorts(9200)
@@ -73,15 +67,7 @@ public class ElasticsearchTests {
 
     @BeforeAll
     public static void startElasticsearchCreateLocalClient() throws Exception {
-        // remove from environment to have TLS enabled
-        container.getEnvMap().remove("xpack.security.enabled");
-
-        // custom wait strategy not requiring any TLS tuning...
-        container.setWaitStrategy(new LogMessageWaitStrategy().withRegEx(".*\"message\":\"started\".*"));
         container.start();
-
-        // extract the ca cert from the running instance
-        byte[] certAsBytes = container.copyFileFromContainer("/usr/share/elasticsearch/config/certs/http_ca.crt", InputStream::readAllBytes);
 
         HttpHost host = new HttpHost("localhost", container.getMappedPort(9200), "https");
         final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
@@ -89,7 +75,7 @@ public class ElasticsearchTests {
         final RestClientBuilder builder = RestClient.builder(host);
 
         builder.setHttpClientConfigCallback(clientBuilder -> {
-            clientBuilder.setSSLContext(SslUtils.createContextFromCaCert(certAsBytes));
+            clientBuilder.setSSLContext(container.createSslContextFromCa());
             clientBuilder.setDefaultCredentialsProvider(credentialsProvider);
             return clientBuilder;
         });
