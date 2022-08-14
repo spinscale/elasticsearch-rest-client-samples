@@ -24,7 +24,6 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.core.CountRequest;
 import org.elasticsearch.client.core.CountResponse;
 import org.elasticsearch.cluster.health.ClusterHealthStatus;
-import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.core.TimeValue;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -34,6 +33,7 @@ import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import org.elasticsearch.search.aggregations.metrics.Avg;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
+import org.elasticsearch.xcontent.XContentType;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,7 +57,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class ElasticsearchTests {
 
     private static final ElasticsearchContainer container =
-            new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:7.14.0").withExposedPorts(9200);
+            new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:7.17.5").withExposedPorts(9200);
 
     private static final NodeSelector INGEST_NODE_SELECTOR = nodes -> {
         final Iterator<Node> iterator = nodes.iterator();
